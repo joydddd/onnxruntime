@@ -1,5 +1,16 @@
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
+#define PIN_HOOK 1
+
+
+#ifdef PIN_HOOK
+#include "stdio.h"
+void pin_start() asm("pin_hook_init")  __attribute__((noinline));
+void pin_stop() asm("pin_hook_fini") __attribute__((noinline));
+void pin_start() {fprintf(stderr, "PIN START\n");}
+void pin_stop() { fprintf(stderr, "PIN END\n"); }
+#endif  // PIN_HOOK
+
 
 // TODO: Remove when removing Eigen
 #if defined(_MSC_VER)
@@ -123,6 +134,10 @@ Status PerformanceRunner::Run() {
   performance_result_.start = std::chrono::high_resolution_clock::now();
 
   std::unique_ptr<utils::ICPUUsage> p_ICPUUsage = utils::CreateICPUUsage();
+
+#ifdef PIN_HOOK
+  pin_start();
+#endif  // PIN_HOOK
   switch (performance_test_config_.run_config.test_mode) {
     case TestMode::kFixDurationMode:
       ORT_RETURN_IF_ERROR(FixDurationTest());
@@ -133,6 +148,10 @@ Status PerformanceRunner::Run() {
     default:
       return ORT_MAKE_STATUS(ONNXRUNTIME, FAIL, "unknown test mode.");
   }
+
+#ifdef PIN_HOOK
+  pin_stop();
+#endif  // PIN_HOOK
   performance_result_.end = std::chrono::high_resolution_clock::now();
 
   performance_result_.average_CPU_usage = p_ICPUUsage->GetUsage();
